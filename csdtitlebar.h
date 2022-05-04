@@ -2,6 +2,7 @@
 
 #include "captionbuttonstyle.h"
 
+#include <QPalette>
 #include <QColor>
 #include <QIcon>
 #include <QStringView>
@@ -36,7 +37,7 @@ private:
 #endif
     bool m_active = false;
     bool m_maximized = false;
-    QColor m_activeColor = Qt::black;
+    QColor m_activeColor = palette().color(QPalette::Active, QPalette::Window); // was Qt::black;
     QColor m_inactiveColor = Qt::white;
     QColor m_hoverColor = Qt::gray;
     QHBoxLayout *m_horizontalLayout;

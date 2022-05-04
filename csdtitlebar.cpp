@@ -50,8 +50,10 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
                    QWidget *parent)
     : QWidget(parent), m_captionButtonStyle(captionButtonStyle) {
     this->setObjectName("TitleBar");
-    this->setMinimumSize(QSize(0, 30));
-    this->setMaximumSize(QSize(QWIDGETSIZE_MAX, 30));
+    int headerHeight = style()->pixelMetric(QStyle::PM_TitleBarHeight);
+    int headerButtonSize = style()->pixelMetric(QStyle::PM_TitleBarButtonSize);
+    this->setMinimumSize(QSize(0, headerHeight)); // was 30
+    this->setMaximumSize(QSize(QWIDGETSIZE_MAX, headerHeight)); // was 30
 #ifdef _WIN32
     auto maybeColor = this->readDWMColorizationColor();
     if (maybeColor.has_value()) {
@@ -77,9 +79,9 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
     }
 #endif
 #endif
-
+    int spacing = style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing);
     this->m_horizontalLayout = new QHBoxLayout(this);
-    this->m_horizontalLayout->setSpacing(0);
+    this->m_horizontalLayout->setSpacing(spacing); // was 0
     this->m_horizontalLayout->setObjectName("HorizontalLayout");
     this->m_horizontalLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -92,13 +94,13 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
     this->m_buttonCaptionIcon =
         new TitleBarButton(TitleBarButton::CaptionIcon, this);
     this->m_buttonCaptionIcon->setObjectName("ButtonCaptionIcon");
-    this->m_buttonCaptionIcon->setMinimumSize(QSize(30, 30));
-    this->m_buttonCaptionIcon->setMaximumSize(QSize(30, 30));
+    this->m_buttonCaptionIcon->setMinimumSize(QSize(headerButtonSize, headerButtonSize)); //was 30x30
+    this->m_buttonCaptionIcon->setMaximumSize(QSize(headerButtonSize, headerButtonSize));
     this->m_buttonCaptionIcon->setFocusPolicy(Qt::NoFocus);
 #ifdef _WIN32
     int icon_size = ::GetSystemMetrics(SM_CXSMICON);
 #else
-    int icon_size = 16;
+    int icon_size = style()->pixelMetric(QStyle::PM_TitleBarButtonIconSize); //was 16;
 #endif
     this->m_buttonCaptionIcon->setIconSize(QSize(icon_size, icon_size));
     const auto icon = [&captionIcon, this]() -> QIcon {
@@ -137,38 +139,20 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
     if (mainWindow != nullptr) {
         this->m_menuBar = mainWindow->menuBar();
         this->m_horizontalLayout->addWidget(this->m_menuBar);
-        this->m_menuBar->setFixedHeight(30);
+        this->m_menuBar->setFixedHeight(headerHeight); //was 30
     }
 
     auto *emptySpace = new QWidget(this);
     emptySpace->setAttribute(Qt::WA_TransparentForMouseEvents);
     this->m_horizontalLayout->addWidget(emptySpace, 1);
-
-    int captionButtonsWidth = 0;
-    switch (this->m_captionButtonStyle) {
-    case CaptionButtonStyle::custom: {
-        captionButtonsWidth = 30;
-        break;
-    }
-    case CaptionButtonStyle::win: {
-        captionButtonsWidth = 46;
-        break;
-    }
-    case CaptionButtonStyle::mac: {
-        captionButtonsWidth = 26;
-        break;
-    }
-    }
-
+    int headerIconSize = style()->pixelMetric(QStyle::PM_TitleBarButtonIconSize);
     this->m_buttonMinimize =
         new TitleBarButton(TitleBarButton::Minimize, this);
     this->m_buttonMinimize->setObjectName("ButtonMinimize");
-    this->m_buttonMinimize->setMinimumSize(QSize(captionButtonsWidth, 30));
-    this->m_buttonMinimize->setMaximumSize(QSize(captionButtonsWidth, 30));
+    this->m_buttonMinimize->setMinimumSize(QSize(headerButtonSize, headerButtonSize));
+    this->m_buttonMinimize->setMaximumSize(QSize(headerButtonSize, headerButtonSize));
     this->m_buttonMinimize->setFocusPolicy(Qt::NoFocus);
-    this->m_buttonMinimize->setIconSize(
-        this->m_captionButtonStyle == CaptionButtonStyle::mac ? QSize(16, 16)
-                                                              : QSize(12, 12));
+    this->m_buttonMinimize->setIconSize(QSize(headerIconSize, headerIconSize));
     this->m_horizontalLayout->addWidget(this->m_buttonMinimize);
     connect(this->m_buttonMinimize, &QPushButton::clicked, this, [this]() {
         emit this->minimizeClicked();
@@ -178,13 +162,11 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
         new TitleBarButton(TitleBarButton::MaximizeRestore, this);
     this->m_buttonMaximizeRestore->setObjectName("ButtonMaximizeRestore");
     this->m_buttonMaximizeRestore->setMinimumSize(
-        QSize(captionButtonsWidth, 30));
+        QSize(headerButtonSize, headerButtonSize));
     this->m_buttonMaximizeRestore->setMaximumSize(
-        QSize(captionButtonsWidth, 30));
+        QSize(headerButtonSize, headerButtonSize));
     this->m_buttonMaximizeRestore->setFocusPolicy(Qt::NoFocus);
-    this->m_buttonMaximizeRestore->setIconSize(
-        this->m_captionButtonStyle == CaptionButtonStyle::mac ? QSize(16, 16)
-                                                              : QSize(12, 12));
+    this->m_buttonMaximizeRestore->setIconSize(QSize(headerIconSize, headerIconSize));
     this->m_horizontalLayout->addWidget(this->m_buttonMaximizeRestore);
     connect(this->m_buttonMaximizeRestore,
             &QPushButton::clicked,
@@ -193,12 +175,10 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
 
     this->m_buttonClose = new TitleBarButton(TitleBarButton::Close, this);
     this->m_buttonClose->setObjectName("ButtonClose");
-    this->m_buttonClose->setMinimumSize(QSize(captionButtonsWidth, 30));
-    this->m_buttonClose->setMaximumSize(QSize(captionButtonsWidth, 30));
+    this->m_buttonClose->setMinimumSize(QSize(headerButtonSize, headerIconSize));
+    this->m_buttonClose->setMaximumSize(QSize(headerButtonSize, headerIconSize));
     this->m_buttonClose->setFocusPolicy(Qt::NoFocus);
-    this->m_buttonClose->setIconSize(
-        this->m_captionButtonStyle == CaptionButtonStyle::mac ? QSize(16, 16)
-                                                              : QSize(12, 12));
+    this->m_buttonClose->setIconSize(QSize(headerIconSize, headerIconSize));
     this->m_horizontalLayout->addWidget(this->m_buttonClose);
     connect(this->m_buttonClose, &QPushButton::clicked, this, [this]() {
         emit this->closeClicked();
@@ -410,25 +390,10 @@ CaptionButtonStyle TitleBar::captionButtonStyle() const {
 
 void TitleBar::setCaptionButtonStyle(CaptionButtonStyle captionButtonStyle) {
     this->m_captionButtonStyle = captionButtonStyle;
-
-    auto iconSize = this->m_captionButtonStyle == CaptionButtonStyle::mac
-                        ? QSize(16, 16)
-                        : QSize(12, 12);
-    int requiredWidth = 0;
-    switch (this->m_captionButtonStyle) {
-    case CaptionButtonStyle::custom: {
-        requiredWidth = 30;
-        break;
-    }
-    case CaptionButtonStyle::win: {
-        requiredWidth = 46;
-        break;
-    }
-    case CaptionButtonStyle::mac: {
-        requiredWidth = 26;
-        break;
-    }
-    }
+    
+    int pm_icon_size = style()->pixelMetric(QStyle::PM_TitleBarButtonIconSize);
+    auto iconSize = QSize(pm_icon_size, pm_icon_size);
+    int requiredWidth = style()->pixelMetric(QStyle::PM_TitleBarButtonSize);
     this->m_buttonMinimize->setIconSize(iconSize);
     this->m_buttonMinimize->setMinimumWidth(requiredWidth);
     this->m_buttonMinimize->setMaximumWidth(requiredWidth);
