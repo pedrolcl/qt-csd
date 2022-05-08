@@ -1,8 +1,7 @@
 #include "csdtitlebar.h"
-
 #include "csdtitlebarbutton.h"
 
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
 #include "qregistrywatcher.h"
 #include "qtwinbackports.h"
 
@@ -19,31 +18,21 @@
 #include <QStyleOption>
 #include <QTimer>
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(Q_OS_WIN) && !defined(Q_OS_DARWIN)
 #include <QMouseEvent>
 #include <QWindow>
-
-#include <QX11Info>
-
-#include <private/qhighdpiscaling_p.h>
-#include <qpa/qplatformscreen.h>
-#include <qpa/qplatformwindow.h>
-
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+   //#include <QPlatformWindow>
+    #include <QX11Info>
+    //#include <private/qhighdpiscaling_p.h>
+    //#include <qpa/qplatformscreen.h>
+    //#include <qpa/qplatformwindow.h>
+    #include <xcb/xproto.h>
+#endif
 #include <cstring>
 #endif
 
 namespace CSD {
-
-#if !defined(_WIN32) && !defined(__APPLE__)
-constexpr static const char _NET_WM_MOVERESIZE[] = "_NET_WM_MOVERESIZE";
-
-static QWidget *titleBarTopLevelWidget(QWidget *w) {
-    while (w && !w->isWindow() && w->windowType() != Qt::SubWindow) {
-        w = w->parentWidget();
-    }
-    return w;
-}
-#endif
 
 TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
                    const QIcon &captionIcon,
@@ -54,12 +43,12 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
     int headerButtonSize = style()->pixelMetric(QStyle::PM_TitleBarButtonSize);
     this->setMinimumSize(QSize(0, headerHeight)); // was 30
     this->setMaximumSize(QSize(QWIDGETSIZE_MAX, headerHeight)); // was 30
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
     auto maybeColor = this->readDWMColorizationColor();
     if (maybeColor.has_value()) {
         this->m_activeColor = *maybeColor;
     }
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
     auto maybeWatcher = QRegistryWatcher::create(
         HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\DWM", this);
     if (maybeWatcher.has_value()) {
@@ -97,7 +86,7 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
     this->m_buttonCaptionIcon->setMinimumSize(QSize(headerButtonSize, headerButtonSize)); //was 30x30
     this->m_buttonCaptionIcon->setMaximumSize(QSize(headerButtonSize, headerButtonSize));
     this->m_buttonCaptionIcon->setFocusPolicy(Qt::NoFocus);
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
     int icon_size = ::GetSystemMetrics(SM_CXSMICON);
 #else
     int icon_size = style()->pixelMetric(QStyle::PM_TitleBarButtonIconSize); //was 16;
@@ -115,7 +104,7 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
         if (!globalWindowIcon.isNull()) {
             return globalWindowIcon;
         }
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
         // Use system default application icon which doesn't need margin
         this->m_horizontalLayout->takeAt(
             this->m_horizontalLayout->indexOf(this->m_leftMargin));
@@ -124,7 +113,7 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
         globalWindowIcon.addPixmap(
             QtWinBackports::qt_pixmapFromWinHICON(winIcon));
 #else
-#if !defined(__APPLE__)
+#if !defined(Q_OS_DARWIN)
         if (globalWindowIcon.isNull()) {
             globalWindowIcon = QIcon::fromTheme("application-x-executable");
         }
@@ -190,7 +179,7 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
                                          Qt::WindowMaximized));
 }
 
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
 std::optional<QColor> TitleBar::readDWMColorizationColor() {
     auto handleKey = ::HKEY();
     auto regOpenResult = ::RegOpenKeyExW(HKEY_CURRENT_USER,
@@ -224,14 +213,23 @@ TitleBar::~TitleBar() {
     this->m_menuBar = nullptr;
 }
 
-#if !defined(_WIN32) && !defined(__APPLE__)
-void TitleBar::mousePressEvent(QMouseEvent *event) {
-    if (!QX11Info::isPlatformX11() || event->button() != Qt::LeftButton) {
+#if !defined(Q_OS_WIN) && !defined(Q_OS_DARWIN)
+void TitleBar::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+        m_dragPosition = event->globalPos() - window()->pos();
+#else
+        m_dragPosition = event->globalPosition().toPoint() - window()->pos();
+#endif
+        //qDebug() << Q_FUNC_INFO << m_dragPosition << window()->pos();
+        event->accept();
+    } else {
         QWidget::mousePressEvent(event);
         return;
     }
 
-    QWidget *tlw = titleBarTopLevelWidget(this);
+#if false
 
     if (tlw->isWindow() && tlw->windowHandle() &&
         !(tlw->windowFlags() & Qt::X11BypassWindowManagerHint) &&
@@ -288,12 +286,25 @@ void TitleBar::mousePressEvent(QMouseEvent *event) {
                        eventFlags,
                        reinterpret_cast<const char *>(&xev));
     }
+#endif
 }
 #endif
 
+void TitleBar::mouseMoveEvent(QMouseEvent *event)
+{
+    if (event->buttons() & Qt::LeftButton) {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+        window()->move(event->globalPos() - m_dragPosition);
+#else
+        window()->move(event->globalPosition().toPoint() - m_dragPosition);
+#endif
+        event->accept();
+    }
+}
+
 void TitleBar::paintEvent([[maybe_unused]] QPaintEvent *event) {
     auto styleOption = QStyleOption();
-    styleOption.init(this);
+    styleOption.initFrom(this);
     auto painter = QPainter(this);
     this->style()->drawPrimitive(
         QStyle::PE_Widget, &styleOption, &painter, this);
@@ -358,7 +369,7 @@ QColor TitleBar::activeColor() {
 }
 
 void TitleBar::setActiveColor(const QColor &inactiveColor) {
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
     this->m_activeColorOverridden = true;
 #endif
     this->m_activeColor = inactiveColor;

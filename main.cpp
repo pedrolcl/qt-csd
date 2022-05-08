@@ -7,9 +7,10 @@
 #include <QMenuBar>
 #include <QMenu>
 #include <QMessageBox>
+#include <QDebug>
 
 #include "csdtitlebar.h"
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
 #include "win32csd.h"
 #else
 #include "linuxcsd.h"
@@ -32,7 +33,7 @@ public:
         QAction *aboutQtAct = aboutMenu->addAction(tr("About &Qt"), qApp, &QApplication::aboutQt);
         aboutQtAct->setStatusTip(tr("Show the Qt library's About box"));
         auto *layout = new QVBoxLayout;
-        layout->setMargin(0);
+        layout->setContentsMargins(0,0,0,0);
         this->centralWidget()->setLayout(layout);
         auto *buttonToggleFullScr = new QPushButton("Toggle full screen", this);
         connect(buttonToggleFullScr, &QPushButton::clicked, this, [this] {
@@ -70,7 +71,7 @@ public:
         outerLayout->addStretch();
         subWidget->setLayout(outerLayout);
         this->m_titleBar = new CSD::TitleBar(
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
             CSD::CaptionButtonStyle::win,
 #else
             CSD::CaptionButtonStyle::custom,
@@ -116,33 +117,36 @@ private:
 };
 
 int main(int argc, char *argv[]) {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-    auto *app = new QApplication(argc, argv);
+#endif
+    QApplication app(argc, argv);
     QApplication::setApplicationName("qt-csd");
-    auto *mainWindow = new DemoWindow();
-    mainWindow->resize(640, 480);
+    DemoWindow mainWindow;
+    mainWindow.resize(640, 480);
+    qDebug() << Q_FUNC_INFO << "running on" << qApp->platformName();
 
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
     auto *filter = new CSD::Internal::Win32ClientSideDecorationFilter(app);
-    app->installNativeEventFilter(filter);
+    app.installNativeEventFilter(filter);
 #else
-    auto *filter = new CSD::Internal::LinuxClientSideDecorationFilter(app);
+    auto *filter = new CSD::Internal::LinuxClientSideDecorationFilter(&app);
 #endif
     filter->apply(
-        mainWindow,
-#ifdef _WIN32
-        [mainWindow]() { return mainWindow->titleBar()->hovered(); },
+        &mainWindow,
+#if defined(Q_OS_WIN)
+        [&mainWindow]() { return mainWindow.titleBar()->hovered(); },
 #endif
-        [mainWindow] {
-            const bool on = mainWindow->isActiveWindow();
-            mainWindow->titleBar()->setActive(on);
+        [&mainWindow] {
+            const bool on = mainWindow.isActiveWindow();
+            mainWindow.titleBar()->setActive(on);
         },
-        [mainWindow] {
-            mainWindow->titleBar()->onWindowStateChange(
-                mainWindow->windowState());
+        [&mainWindow] {
+            mainWindow.titleBar()->onWindowStateChange(
+                mainWindow.windowState());
         });
 
-    mainWindow->show();
-    return app->exec();
+    mainWindow.show();
+    return app.exec();
 }

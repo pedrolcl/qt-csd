@@ -154,7 +154,12 @@ void TitleBarButton::paintEvent([[maybe_unused]] QPaintEvent *event) {
     stylePainter.drawControl(QStyle::CE_PushButtonLabel, styleOptionButton);
 }
 
-void TitleBarButton::enterEvent(QEvent *event) {
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+void TitleBarButton::enterEvent(QEvent *event)
+#else
+void TitleBarButton::enterEvent(QEnterEvent *event)
+#endif
+{
     QPushButton::enterEvent(event);
     static_cast<TitleBar *>(this->parent())->triggerCaptionRepaint();
 }

@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
+cmake_policy(SET CMP0020 NEW)
+cmake_policy(SET CMP0071 NEW)
+cmake_policy(SET CMP0092 NEW)
 
 if (APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version" FORCE)
@@ -18,26 +21,31 @@ if (APPLE)
     endif ()
 endif ()
 
-enable_language(CXX)
+project ( qt-csd
+    LANGUAGES CXX
+    VERSION 0.1.0
+)
 
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 17)
 
-cmake_policy(SET CMP0020 NEW)
-cmake_policy(SET CMP0071 NEW)
-cmake_policy(SET CMP0092 NEW)
-
 find_package(Threads REQUIRED)
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
-
-project(qt-csd LANGUAGES CXX VERSION 0.1.0)
+find_package(QT NAMES Qt5 Qt6 REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Widgets REQUIRED)
 
 add_executable(${PROJECT_NAME} WIN32
-    "${CMAKE_SOURCE_DIR}/csd.qrc"
-    "${CMAKE_SOURCE_DIR}/csdtitlebar.cpp"
-    "${CMAKE_SOURCE_DIR}/csdtitlebarbutton.cpp"
-    "${CMAKE_SOURCE_DIR}/main.cpp"
+    captionbuttonstyle.h
+    csd.qrc
+    csdmetatype.h
+    csdtitlebar.cpp
+    csdtitlebar.h
+    csdtitlebarbutton.cpp
+    csdtitlebarbutton.h
+    main.cpp
 )
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang" AND NOT MSVC)
@@ -93,21 +101,13 @@ else ()
         "/W4"
     )
 endif ()
-string(REPLACE ";" " " COMPILER_WARNINGS_STR "${COMPILER_WARNINGS}")
+target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILER_WARNINGS})
 
-get_target_property(${PROJECT_NAME}_SOURCES ${PROJECT_NAME} SOURCES)
-
-foreach (${PROJECT_NAME}_SOURCE ${${PROJECT_NAME}_SOURCES})
-    set_source_files_properties(${${PROJECT_NAME}_SOURCE} PROPERTIES COMPILE_FLAGS "${COMPILER_WARNINGS_STR}")
-endforeach ()
-
-set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTORCC ON)
-
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
-    "${CMAKE_CURRENT_BINARY_DIR}"
-    "${Qt5Gui_PRIVATE_INCLUDE_DIRS}"
-    "${Qt5Widgets_INCLUDE_DIRS}"
-    )
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Gui
+    Qt${QT_VERSION_MAJOR}::Widgets
+)
 
 if (APPLE)
     find_library(LIBOBJC "objc")
@@ -117,47 +117,39 @@ if (APPLE)
 
 elseif (UNIX)
     target_sources(${PROJECT_NAME} PRIVATE
-        "${CMAKE_SOURCE_DIR}/linuxcsd.cpp"
+        linuxcsd.cpp
+        linuxcsd.h
     )
 
-    find_package(Qt5X11Extras REQUIRED)
-    find_library(LIBXCB "xcb" REQUIRED)
+    if (QT_VERSION VERSION_LESS 6.0.0)
+        find_package(Qt5X11Extras REQUIRED)
+        find_library(LIBXCB "xcb" REQUIRED)
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            Qt5::X11Extras
+            ${LIBXCB}
+        )
+    endif()
 
-    set(QTCORE_LIB "${Qt5Core_LIBRARIES}")
-    set(QTGUI_LIB "${Qt5Gui_LIBRARIES}")
-    set(QTWIDGETS_LIB "${Qt5Widgets_LIBRARIES}")
+else () # Windows
 
-    target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${Qt5X11Extras_INCLUDE_DIRS})
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        ${LIBXCB}
-        ${Qt5X11Extras_LIBRARIES}
-    )
-else ()
     target_sources(${PROJECT_NAME} PRIVATE
-        "${CMAKE_SOURCE_DIR}/qregistrywatcher.cpp"
-        "${CMAKE_SOURCE_DIR}/qtwinbackports.cpp"
-        "${CMAKE_SOURCE_DIR}/win32csd.cpp"
+        qregistrywatcher.cpp
+        qregistrywatcher.h
+        qtwinbackports.cpp
+        qtwinbackports.h
+        win32csd.cpp
+        win32csd.h
     )
 
     find_package(Qt5WinExtras REQUIRED)
     find_library(DWMAPI "dwmapi" REQUIRED)
-
-    set(QTCORE_LIB "${Qt5Core_LIBRARIES}")
-    set(QTGUI_LIB "${Qt5Gui_LIBRARIES}")
-    set(QTWIDGETS_LIB "${Qt5Widgets_LIBRARIES}")
 
     target_compile_definitions(${PROJECT_NAME} PUBLIC WIN32_LEAN_AND_MEAN)
     target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
     target_compile_definitions(${PROJECT_NAME} PUBLIC UNICODE)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt5::WinExtras
         ${DWMAPI}
     )
 endif ()
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    "${QTCORE_LIB}"
-    "${QTGUI_LIB}"
-    "${QTWIDGETS_LIB}"
-)

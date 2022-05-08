@@ -16,7 +16,7 @@ class QLayout;
 class QLabel;
 class QMenuBar;
 
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
 class QRegistryWatcher;
 #endif
 
@@ -30,7 +30,7 @@ class TitleBar : public QWidget {
     Q_PROPERTY(bool maximized READ isMaximized WRITE setMaximized)
 
 private:
-#ifdef _WIN32
+#if defined(Q_OS_WIN)
     bool m_activeColorOverridden = false;
     QRegistryWatcher *m_watcher = nullptr;
     std::optional<QColor> readDWMColorizationColor();
@@ -50,8 +50,9 @@ private:
     TitleBarButton *m_buttonClose;
 
 protected:
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(Q_OS_WIN) && !defined(Q_OS_DARWIN)
     void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
 #endif
     void paintEvent(QPaintEvent *event) override;
 
@@ -85,6 +86,9 @@ signals:
     void minimizeClicked();
     void maximizeRestoreClicked();
     void closeClicked();
+
+private:
+    QPoint m_dragPosition;
 };
 
 namespace Internal {
