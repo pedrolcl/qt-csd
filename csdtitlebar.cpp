@@ -18,19 +18,6 @@
 #include <QTimer>
 #include <QMouseEvent>
 
-#if !defined(Q_OS_WIN) && !defined(Q_OS_DARWIN)
-#include <QWindow>
-#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
-   //#include <QPlatformWindow>
-    #include <QX11Info>
-    //#include <private/qhighdpiscaling_p.h>
-    //#include <qpa/qplatformscreen.h>
-    //#include <qpa/qplatformwindow.h>
-    #include <xcb/xproto.h>
-#endif
-#include <cstring>
-#endif
-
 namespace CSD {
 
 TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
@@ -221,67 +208,7 @@ void TitleBar::mousePressEvent(QMouseEvent *event)
         event->accept();
     } else {
         QWidget::mousePressEvent(event);
-        return;
     }
-
-#if false
-
-    if (tlw->isWindow() && tlw->windowHandle() &&
-        !(tlw->windowFlags() & Qt::X11BypassWindowManagerHint) &&
-        !tlw->testAttribute(Qt::WA_DontShowOnScreen) &&
-        !tlw->hasHeightForWidth()) {
-        QPlatformWindow *platformWindow = tlw->windowHandle()->handle();
-        const QPoint globalPos = QHighDpi::toNativePixels(
-            platformWindow->mapToGlobal(this->mapTo(tlw, event->pos())),
-            platformWindow->screen()->screen());
-
-        const xcb_atom_t moveResizeAtom = []() -> xcb_atom_t {
-            xcb_intern_atom_cookie_t cookie = xcb_intern_atom(
-                QX11Info::connection(),
-                false,
-                static_cast<std::uint16_t>(std::strlen(_NET_WM_MOVERESIZE)),
-                _NET_WM_MOVERESIZE);
-            xcb_intern_atom_reply_t *reply =
-                xcb_intern_atom_reply(QX11Info::connection(), cookie, nullptr);
-            const xcb_atom_t moveResizeAtomCopy = reply->atom;
-            free(reply);
-            return moveResizeAtomCopy;
-        }();
-
-        xcb_client_message_event_t xev;
-        xev.response_type = XCB_CLIENT_MESSAGE;
-        xev.type = moveResizeAtom;
-        xev.sequence = 0;
-        xev.window = static_cast<xcb_window_t>(platformWindow->winId());
-        xev.format = 32;
-        xev.data.data32[0] = static_cast<std::uint32_t>(globalPos.x());
-        xev.data.data32[1] = static_cast<std::uint32_t>(globalPos.y());
-        xev.data.data32[2] = 8; // move
-        xev.data.data32[3] = XCB_BUTTON_INDEX_1;
-        xev.data.data32[4] = 0;
-
-        const xcb_window_t rootWindow = [platformWindow]() -> xcb_window_t {
-            xcb_query_tree_cookie_t queryTreeCookie = xcb_query_tree(
-                QX11Info::connection(),
-                static_cast<xcb_window_t>(platformWindow->winId()));
-            xcb_query_tree_reply_t *queryTreeReply = xcb_query_tree_reply(
-                QX11Info::connection(), queryTreeCookie, nullptr);
-            xcb_window_t rootWindowCopy = queryTreeReply->root;
-            free(queryTreeReply);
-            return rootWindowCopy;
-        }();
-
-        std::uint32_t eventFlags = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
-                                   XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
-
-        xcb_ungrab_pointer(QX11Info::connection(), XCB_CURRENT_TIME);
-        xcb_send_event(QX11Info::connection(),
-                       false,
-                       rootWindow,
-                       eventFlags,
-                       reinterpret_cast<const char *>(&xev));
-    }
-#endif
 }
 
 void TitleBar::mouseMoveEvent(QMouseEvent *event)
@@ -293,6 +220,8 @@ void TitleBar::mouseMoveEvent(QMouseEvent *event)
         window()->move(event->globalPosition().toPoint() - m_dragPosition);
 #endif
         event->accept();
+    } else {
+        QWidget::mousePressEvent(event);
     }
 }
 

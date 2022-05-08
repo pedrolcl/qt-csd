@@ -114,23 +114,16 @@ if (APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         ${LIBOBJC}
     )
+endif()
 
-elseif (UNIX)
-    target_sources(${PROJECT_NAME} PRIVATE
+if (UNIX)
+
+    target_sources( ${PROJECT_NAME} PRIVATE
         linuxcsd.cpp
         linuxcsd.h
     )
 
-    if (QT_VERSION VERSION_LESS 6.0.0)
-        find_package(Qt5X11Extras REQUIRED)
-        find_library(LIBXCB "xcb" REQUIRED)
-        target_link_libraries(${PROJECT_NAME} PRIVATE
-            Qt5::X11Extras
-            ${LIBXCB}
-        )
-    endif()
-
-else () # Windows
+elseif (WIN32) # Windows
 
     target_sources(${PROJECT_NAME} PRIVATE
         qregistrywatcher.cpp
