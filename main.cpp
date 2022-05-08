@@ -19,8 +19,10 @@
 class DemoWindow : public QMainWindow {
 
 public:
-    DemoWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
+    DemoWindow(QWidget *parent = nullptr) : QMainWindow(parent) 
+	{
         this->setCentralWidget(new QWidget(this));
+		// Main menu
         QMenu *fileMenu = menuBar()->addMenu("&File");
         fileMenu->addSeparator();
         auto *closeAct = fileMenu->addAction("&Quit", this, &QWidget::close);
@@ -32,6 +34,7 @@ public:
         aboutAct->setStatusTip(tr("Show the application's About box"));
         QAction *aboutQtAct = aboutMenu->addAction(tr("About &Qt"), qApp, &QApplication::aboutQt);
         aboutQtAct->setStatusTip(tr("Show the Qt library's About box"));
+		// Client area
         auto *layout = new QVBoxLayout;
         layout->setContentsMargins(0,0,0,0);
         this->centralWidget()->setLayout(layout);
@@ -43,8 +46,10 @@ public:
         checkBoxMinimize->setChecked(true);
         auto *checkBoxMaximize = new QCheckBox("Maximizable", this);
         checkBoxMaximize->setChecked(true);
+#if !defined(Q_OS_WIN)
         auto *checkBoxResize = new QCheckBox("Resizable", this);
         checkBoxResize->setChecked(true);
+#endif		
         auto *subWidget = new QWidget(this);
         auto *outerLayout = new QVBoxLayout();
         outerLayout->addStretch();
@@ -60,7 +65,9 @@ public:
         outerLayout->addLayout(centralLayout2);
         auto *centralLayout3 = new QHBoxLayout();
         centralLayout3->addStretch();
+#if !defined(Q_OS_WIN)
         centralLayout3->addWidget(checkBoxResize);
+#endif		
         centralLayout3->addStretch();
         outerLayout->addLayout(centralLayout3);
         auto *centralLayout4 = new QHBoxLayout();
@@ -70,6 +77,7 @@ public:
         outerLayout->addLayout(centralLayout4);
         outerLayout->addStretch();
         subWidget->setLayout(outerLayout);
+		// Title Bar
         this->m_titleBar = new CSD::TitleBar(
 #if defined(Q_OS_WIN)
             CSD::CaptionButtonStyle::win,
@@ -86,10 +94,12 @@ public:
         });
         layout->addWidget(this->m_titleBar);
         layout->addWidget(subWidget);
+#if !defined(Q_OS_WIN)
         this->statusBar()->showMessage("Resize me by the grip ...");
         connect(checkBoxResize, &QCheckBox::toggled, this, [this](bool checked){
             this->statusBar()->setVisible(checked);
         });
+#endif
         connect(
             this->m_titleBar, &CSD::TitleBar::minimizeClicked, this, [this]() {
                 this->setWindowState(this->windowState() |
@@ -126,9 +136,8 @@ int main(int argc, char *argv[]) {
     DemoWindow mainWindow;
     mainWindow.resize(640, 480);
     qDebug() << Q_FUNC_INFO << "running on" << qApp->platformName();
-
 #if defined(Q_OS_WIN)
-    auto *filter = new CSD::Internal::Win32ClientSideDecorationFilter(app);
+    auto *filter = new CSD::Internal::Win32ClientSideDecorationFilter(&app);
     app.installNativeEventFilter(filter);
 #else
     auto *filter = new CSD::Internal::LinuxClientSideDecorationFilter(&app);

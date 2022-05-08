@@ -141,15 +141,14 @@ else () # Windows
         win32csd.h
     )
 
-    find_package(Qt5WinExtras REQUIRED)
-    find_library(DWMAPI "dwmapi" REQUIRED)
-
+    #find_library(DWMAPI "dwmapi" REQUIRED)
+    
+    find_package(Qt${QT_VERSION_MAJOR}Gui)
+    include_directories(${Qt${QT_VERSION_MAJOR}Gui_PRIVATE_INCLUDE_DIRS})
+    
     target_compile_definitions(${PROJECT_NAME} PUBLIC WIN32_LEAN_AND_MEAN)
     target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
     target_compile_definitions(${PROJECT_NAME} PUBLIC UNICODE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE dwmapi )
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        Qt5::WinExtras
-        ${DWMAPI}
-    )
 endif ()

@@ -15,6 +15,7 @@ class QHBoxLayout;
 class QLayout;
 class QLabel;
 class QMenuBar;
+class QMouseEvent;
 
 #if defined(Q_OS_WIN)
 class QRegistryWatcher;
@@ -50,10 +51,8 @@ private:
     TitleBarButton *m_buttonClose;
 
 protected:
-#if !defined(Q_OS_WIN) && !defined(Q_OS_DARWIN)
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
-#endif
     void paintEvent(QPaintEvent *event) override;
 
 public:

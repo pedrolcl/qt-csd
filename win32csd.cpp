@@ -55,7 +55,7 @@ bool Win32ClientSideDecorationFilter::eventFilter(QObject *watched,
     const auto systemCaptionMargin = ::GetSystemMetrics(SM_CYCAPTION);
     const auto marginBottom = std::abs(rect.bottom) + systemCaptionMargin;
     const auto margins = QMargins(-8, -marginBottom, -8, -8);
-    const auto variantMargins = qVariantFromValue(margins);
+    const auto variantMargins = QVariant::fromValue(margins);
     window->setProperty("_q_windowsCustomMargins", variantMargins);
 
     QPlatformWindow *platformWindow = window->handle();
@@ -71,10 +71,16 @@ bool Win32ClientSideDecorationFilter::eventFilter(QObject *watched,
     return false;
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
 bool Win32ClientSideDecorationFilter::nativeEventFilter(
     [[maybe_unused]] const QByteArray &eventType,
-    void *message,
-    long *result) {
+    void *message, long *result) 
+#else
+bool Win32ClientSideDecorationFilter::nativeEventFilter(
+    [[maybe_unused]] const QByteArray &eventType,
+    void *message, qintptr *result)
+#endif
+{
     auto msg = static_cast<MSG *>(message);
     if (msg->hwnd == nullptr) {
         return false;

@@ -4,7 +4,6 @@
 #if defined(Q_OS_WIN)
 #include "qregistrywatcher.h"
 #include "qtwinbackports.h"
-
 #include <Windows.h>
 #include <dwmapi.h>
 #endif
@@ -17,9 +16,9 @@
 #include <QPainter>
 #include <QStyleOption>
 #include <QTimer>
+#include <QMouseEvent>
 
 #if !defined(Q_OS_WIN) && !defined(Q_OS_DARWIN)
-#include <QMouseEvent>
 #include <QWindow>
 #if QT_VERSION < QT_VERSION_CHECK(6,0,0)
    //#include <QPlatformWindow>
@@ -48,7 +47,6 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
     if (maybeColor.has_value()) {
         this->m_activeColor = *maybeColor;
     }
-#if defined(Q_OS_WIN)
     auto maybeWatcher = QRegistryWatcher::create(
         HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\DWM", this);
     if (maybeWatcher.has_value()) {
@@ -58,15 +56,14 @@ TitleBar::TitleBar(CaptionButtonStyle captionButtonStyle,
             &QRegistryWatcher::valueChanged,
             this,
             [this]() {
-                auto maybeColor = this->readDWMColorizationColor();
-                if (maybeColor.has_value() && !this->m_activeColorOverridden) {
-                    this->m_activeColor = *maybeColor;
+                auto maybeColor1 = this->readDWMColorizationColor();
+                if (maybeColor1.has_value() && !this->m_activeColorOverridden) {
+                    this->m_activeColor = *maybeColor1;
                     this->update();
                 }
             },
             Qt::QueuedConnection);
     }
-#endif
 #endif
     int spacing = style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing);
     this->m_horizontalLayout = new QHBoxLayout(this);
@@ -213,7 +210,6 @@ TitleBar::~TitleBar() {
     this->m_menuBar = nullptr;
 }
 
-#if !defined(Q_OS_WIN) && !defined(Q_OS_DARWIN)
 void TitleBar::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
@@ -222,7 +218,6 @@ void TitleBar::mousePressEvent(QMouseEvent *event)
 #else
         m_dragPosition = event->globalPosition().toPoint() - window()->pos();
 #endif
-        //qDebug() << Q_FUNC_INFO << m_dragPosition << window()->pos();
         event->accept();
     } else {
         QWidget::mousePressEvent(event);
@@ -288,7 +283,6 @@ void TitleBar::mousePressEvent(QMouseEvent *event)
     }
 #endif
 }
-#endif
 
 void TitleBar::mouseMoveEvent(QMouseEvent *event)
 {

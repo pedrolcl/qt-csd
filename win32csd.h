@@ -40,9 +40,11 @@ public:
     ~Win32ClientSideDecorationFilter() override;
 
     bool eventFilter(QObject *watched, QEvent *event) override;
-    bool nativeEventFilter(const QByteArray &eventType,
-                           void *message,
-                           long *result) override;
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)	
+    bool nativeEventFilter(const QByteArray &eventType, void *message, long *result) override;
+#else
+	bool nativeEventFilter(const QByteArray &eventType, void *message,  qintptr *result) override;
+#endif	
     void apply(QWidget *widget,
                std::function<bool()> isCaptionHovered,
                std::function<void()> onActivationChanged,
